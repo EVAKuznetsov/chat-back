@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import validator from 'validator'
 
-interface IUser extends mongoose.Document {
+export interface IUser extends mongoose.Document {
   email: string;
   avatar?: string;
   fullname: string;
