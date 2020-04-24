@@ -1,0 +1,25 @@
+dialogs:
+- _id
+- author
+- partner
+- creaced_at, update_at
+
+messages:
+- _id
+- author
+- partner
+- text
+- dialogs
+- unread
+- created_at, update_at
+
+users:
+- _id
+- email
+- avatar
+- fullname
+- password
+- confirmed
+- confirm_hash
+- last_seen
+- created_at, update_at
