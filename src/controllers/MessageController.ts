@@ -1,10 +1,11 @@
-import express from 'express'
+import { Response } from 'express'
 
 import { MessageModel } from '../models'
 
 class MessageController {
-  index(req: express.Request, res: express.Response) {
+  index(req: any, res: Response) {
     const dialog_id = req.params.dialog_id
+    console.log(req.user)
     MessageModel.find({ dialog: dialog_id })
       .populate(['dialog', 'user'])
       .exec()
@@ -16,7 +17,7 @@ class MessageController {
       })
   }
 
-  create(req: express.Request, res: express.Response) {
+  create(req: any, res: Response) {
     const { text, dialog_id: dialog, user_id: user } = req.body
     const message = new MessageModel({ text, dialog, user })
     message
@@ -29,7 +30,7 @@ class MessageController {
       })
   }
 
-  delete(req: express.Request, res: express.Response) {
+  delete(req: any, res: Response) {
     MessageModel.findByIdAndRemove(req.params.id)
       .exec()
       .then(() => {

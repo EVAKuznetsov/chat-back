@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import validator from 'validator'
+import HashPassword from '../libs/hashPassword'
 
 export interface IUser extends mongoose.Document {
   email: string;
@@ -12,6 +13,7 @@ export interface IUser extends mongoose.Document {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
 const UserSchema = new mongoose.Schema(
   {
     email: {
@@ -25,11 +27,17 @@ const UserSchema = new mongoose.Schema(
     confirmed: { type: String, default: false },
     avatar: String,
     confirm_hash: String,
-    last_seen: Date,
+    last_seen: { type: Date, default: new Date() },
   },
   {
     timestamps: true,
   }
 )
+UserSchema.pre('save', function (next) {
+  const user: any = this
+  if (!user.isModified) return next()
+  user.password = HashPassword.generate(user.password)
+  next()
+})
 const UserModel = mongoose.model<IUser>('User', UserSchema)
 export default UserModel

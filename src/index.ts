@@ -1,35 +1,29 @@
 import express from 'express'
 import mongoose from 'mongoose'
-import cors from 'cors'
 import bodyParser from 'body-parser'
-import { UserCtr, DialogCtr, MessageCtr } from './controllers'
+import dotenv from 'dotenv'
+import { updateLastSeen, checkAuth } from './middlewares'
+import { messageRoures, dialogRoutes, userRoutes } from './routes'
 
-const UserController = new UserCtr()
-const DialogController = new DialogCtr()
-const MessageController = new MessageCtr()
+dotenv.config()
 
 const app: express.Application = express()
-app.use(cors())
 app.use(bodyParser.json())
+app.use(checkAuth)
+app.use(updateLastSeen)
 
 mongoose.connect('mongodb://localhost:27017/chat', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useCreateIndex: true,
+  useFindAndModify: false,
 })
 
-app.get('/user/:id', UserController.get)
-app.post('/user/registration', UserController.create)
-app.delete('/user/:id', UserController.delete)
+app.use('/user', userRoutes)
+app.use('/dialog', dialogRoutes)
+app.use('/message', messageRoures)
 
-app.get('/dialog', DialogController.index)
-app.post('/dialog/create', DialogController.create)
-app.delete('/dialog/:id', DialogController.delete)
-
-app.post('/message/create', MessageController.create)
-app.get('/message/:dialog_id', MessageController.index)
-app.delete('/message/:id', MessageController.delete)
-
-app.listen(4000, function () {
-  console.log('4000 port started')
+const PORT = process.env.PORT || 4000
+app.listen(PORT, function () {
+  console.log(`${PORT} port started`)
 })
