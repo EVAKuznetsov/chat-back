@@ -1,11 +1,16 @@
 import { Response } from 'express'
+import { Server } from 'socket.io'
+import errorHandler from '../libs/errorHandler'
 
-import { MessageModel } from '../models'
+import { MessageModel, DialogModel } from '../models'
 
 class MessageController {
-  index(req: any, res: Response) {
+  io: Server
+  constructor(io: Server) {
+    this.io = io
+  }
+  index = (req: any, res: Response) => {
     const dialog_id = req.params.dialog_id
-    console.log(req.user)
     MessageModel.find({ dialog: dialog_id })
       .populate(['dialog', 'user'])
       .exec()
@@ -17,27 +22,42 @@ class MessageController {
       })
   }
 
-  create(req: any, res: Response) {
-    const { text, dialog_id: dialog, user_id: user } = req.body
-    const message = new MessageModel({ text, dialog, user })
+  create = (req: any, res: Response) => {
+    const { text, dialog_id: dialog } = req.body
+    const message = new MessageModel({ text, dialog, user: req.user.id })
     message
       .save()
-      .then((obj) => {
-        res.json({ success: true, message: 'message created', obj })
+      .then((obj: any) => {
+        obj.populate(['dialog', 'user'], (err: any, message: any) => {
+          if (err) return errorHandler(res, err)
+          console.log(message.dialog._id)
+          DialogModel.findByIdAndUpdate(
+            message.dialog._id,
+            {
+              lastMessage: message._id,
+            },
+            { upsert: true }
+          )
+            .exec()
+            .then((data: any) => console.log(data))
+            .catch((err) => errorHandler(res, err))
+          this.io.emit('NEW:MESSAGE', message)
+          res.json({ status: 'success', message: 'message created', obj })
+        })
       })
       .catch((err) => {
-        res.json({ success: false, err })
+        res.status(500).json({ status: 'error', err })
       })
   }
 
-  delete(req: any, res: Response) {
+  delete = (req: any, res: Response) => {
     MessageModel.findByIdAndRemove(req.params.id)
       .exec()
       .then(() => {
-        res.json({ saccess: true, message: 'message removed' })
+        res.json({ status: 'success', message: 'message removed' })
       })
       .catch((err) => {
-        res.json({ success: false, err })
+        res.json({ status: 'error', err })
       })
   }
 }

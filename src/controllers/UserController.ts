@@ -1,59 +1,87 @@
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { validationResult } from 'express-validator'
+import { Server } from 'socket.io'
+
 import { UserModel } from '../models'
 import JWT from '../libs/jsonWebToken'
 import errorHandler from '../libs/errorHandler'
 import HashPassword from '../libs/hashPassword'
 
 class UserController {
-  get(req: any, res: Response) {
+  io: Server
+  constructor(io: Server) {
+    this.io = io
+  }
+  get(req: Request, res: Response) {
     const id: string = req.params.id
     UserModel.findById(id)
       .exec()
-      .then((user) => res.json(user))
-      .catch((err) => res.sendStatus(404).end())
+      .then((user) => res.json({ status: 'success', user }))
+      .catch((err) =>
+        res
+          .status(404)
+          .json({ status: 'error', message: 'Пользователь не найден' })
+      )
   }
-  async create(req: any, res: Response) {
+  getMe(req: any, res: Response) {
+    const id: string = req.user.id
+    console.info(id)
+    UserModel.findById(id)
+      .exec()
+      .then((user) => res.json({ status: 'success', user }))
+      .catch((err) =>
+        res
+          .status(404)
+          .json({ status: 'error', message: 'Пользователь не найден' })
+      )
+  }
+  async create(req: Request, res: Response) {
     const { email, fullname, password } = req.body
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() })
-    }
-    // валидация прошла
-    try {
-      const candidate = await UserModel.findOne({ email })
-      if (candidate) {
-        res.status(409).json({ message: 'Такой адрес уже существует' })
-      } else {
-        const user = new UserModel({
-          email,
-          fullname,
-          password,
-        })
-        try {
-          await user.save()
-          res.status(201).json({ message: 'новый пользователь создан', user })
-        } catch (error) {
-          errorHandler(res, error)
+      return res.status(422).json({ status: 'error', errors: errors.array() })
+    } else {
+      // валидация прошла
+      try {
+        const candidate = await UserModel.findOne({ email })
+        if (candidate) {
+          res
+            .status(409)
+            .json({ status: 'error', message: 'Такой адрес уже существует' })
+        } else {
+          const user = new UserModel({
+            email,
+            fullname,
+            password,
+          })
+          try {
+            await user.save()
+            res.status(201).json({
+              status: 'success',
+              message: 'новый пользователь создан',
+              user,
+            })
+          } catch (error) {
+            errorHandler(res, error)
+          }
         }
+      } catch (error) {
+        errorHandler(res, error)
       }
-    } catch (error) {
-      errorHandler(res, error)
     }
   }
-  delete(req: any, res: Response) {
+  delete(req: Request, res: Response) {
     const id: string = req.params.id
     UserModel.findByIdAndRemove(id)
       .exec()
-      .then((user) => res.send(`${user?.fullname} deleted`))
-      .catch((err) => res.send(err.message))
+      .then((user) => res.json({ status: 'success' }))
+      .catch((err) => res.json({ status: 'error', message: err.message }))
   }
-  async login(req: any, res: Response) {
+  async login(req: Request, res: Response) {
     const { password, email } = req.body
-
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() })
+      return res.status(422).json({ status: 'error', errors: errors.array() })
     }
     // валидация прошла
     try {
@@ -63,18 +91,24 @@ class UserController {
         if (passwordResult) {
           // пароли совпали
           const token = JWT.create({ email: candidat.email, id: candidat._id })
-          res.status(200).json({ success: true, token })
+          res.status(200).json({ status: 'success', token })
         } else {
           // пароли не совпали
           res
-            .status(401)
-            .json({ message: 'Пароли не совпадают, попробуйте снова' })
+            // .status(401)
+            .json({
+              status: 'error',
+              message: 'Пароли не совпадают, попробуйте снова',
+            })
         }
       } else {
         // пользователь не найден
         res
-          .status(404)
-          .json({ message: 'Пользователь с таким email не найден' })
+          // .status(404)
+          .json({
+            status: 'error',
+            message: 'Пользователь с таким email не найден',
+          })
       }
     } catch (error) {
       errorHandler(res, error)

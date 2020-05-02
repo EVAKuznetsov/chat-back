@@ -7,7 +7,7 @@ interface IUserDataForToken {
 class JWT{
     static create(user: IUserDataForToken){
         let token = jwt.sign(user, <string>process.env.JWT_SECRET, {
-            expiresIn: +<string>process.env.JWT_AGE,
+            expiresIn: process.env.JWT_AGE,
             algorithm: 'HS256',
         })
         return token 

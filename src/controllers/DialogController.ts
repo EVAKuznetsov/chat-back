@@ -1,14 +1,18 @@
-import { Response } from 'express'
-
+import { Request, Response } from 'express'
+import { Server } from 'socket.io'
 import { DialogModel, MessageModel } from '../models'
 
 class DialogController {
+  io: Server
+  constructor(io: Server) {
+    this.io = io
+  }
   index(req: any, res: Response) {
-    const userId: string = req.user.id
-    console.log(userId)
+    const userId: string = req.user ? req.user.id : ''
+    console.log(req.user)
     DialogModel.find()
       .or([{ author: userId }, { partner: userId }])
-      .populate(['author', 'partner'])
+      .populate(['author', 'partner', 'lastMessage'])
       .exec()
       .then((dialog) => {
         if (dialog.length > 0) {
@@ -22,7 +26,7 @@ class DialogController {
       })
   }
   create(req: any, res: Response) {
-    const author: string = req.user.id
+    const author: string = req.user ? req.user.id : ''
     const { partner, text } = req.body
     const dialog = new DialogModel({ author, partner })
     dialog
@@ -38,17 +42,17 @@ class DialogController {
         })
       })
       .catch((err) => {
-        res.json({ success: false, err })
+        res.json({ status: 'error', err })
       })
   }
-  delete(req: any, res: Response) {
+  delete(req: Request, res: Response) {
     DialogModel.findOneAndRemove({ _id: req.params.id })
       .exec()
       .then((obj) => {
-        res.json({ saccess: true, message: 'dialog removed' })
+        res.json({ status: 'true', message: 'dialog removed' })
       })
       .catch((err) => {
-        res.json({ success: false, err })
+        res.json({ status: 'error', err })
       })
   }
 }

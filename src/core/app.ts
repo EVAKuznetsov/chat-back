@@ -1,0 +1,7 @@
+import express from 'express'
+import bodyParser from 'body-parser'
+import dotenv from 'dotenv'
+import morgan from 'morgan'
+import cors from 'cors'
+import { updateLastSeen, checkAuth } from '../middlewares'
+import { messageRoures, dialogRoutes, userRoutes } from '../routes'

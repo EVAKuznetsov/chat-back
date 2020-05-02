@@ -1,12 +1,12 @@
-import express from 'express'
+import {Request,Response,NextFunction} from 'express'
 import JWT from '../libs/jsonWebToken'
 
-const checkAuth = (req:any,res:express.Response,next:express.NextFunction)=>{
+const checkAuth = (req:any,res:Response,next:NextFunction)=>{
     if(req.path==='/user/signin'||req.path==='/user/signup'||req.path==='/user/veryfi'){
         return next()
     }
     const token:string = <string>req.headers.token
-    JWT.verify(token).then(user=>{
+    JWT.verify(token).then((user:any)=>{
         req.user = user
         next()
     }).catch(err=>{
