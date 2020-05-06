@@ -10,7 +10,7 @@ class MessageController {
     this.io = io
   }
   index = (req: any, res: Response) => {
-    const dialog_id = req.params.dialog_id
+    const dialog_id:string = <string>req.query.dialog_id
     MessageModel.find({ dialog: dialog_id })
       .populate(['dialog', 'user'])
       .exec()
@@ -24,13 +24,14 @@ class MessageController {
 
   create = (req: any, res: Response) => {
     const { text, dialog_id: dialog } = req.body
+    console.log(req.body)
     const message = new MessageModel({ text, dialog, user: req.user.id })
+    console.log(message)
     message
       .save()
       .then((obj: any) => {
         obj.populate(['dialog', 'user'], (err: any, message: any) => {
           if (err) return errorHandler(res, err)
-          console.log(message.dialog._id)
           DialogModel.findByIdAndUpdate(
             message.dialog._id,
             {
@@ -41,8 +42,8 @@ class MessageController {
             .exec()
             .then((data: any) => console.log(data))
             .catch((err) => errorHandler(res, err))
-          this.io.emit('NEW:MESSAGE', message)
-          res.json({ status: 'success', message: 'message created', obj })
+          this.io.emit('SERVER:MESSAGE_CREATED', message)
+          res.json({ status: 'success', message })
         })
       })
       .catch((err) => {

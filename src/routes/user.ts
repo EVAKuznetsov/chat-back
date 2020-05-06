@@ -8,9 +8,11 @@ const userRoutes = (io: Server) => {
   const UserController = new controller(io)
 
   router.get('/me', UserController.getMe)
+  router.get('/verify', UserController.verify)
   router.get('/:id', UserController.get)
   router.post('/signup', registrationValidate, UserController.create)
   router.post('/signin', lovinValidate, UserController.login)
+
   router.delete('/:id', UserController.delete)
 
   return router

@@ -7,25 +7,29 @@ class DialogController {
   constructor(io: Server) {
     this.io = io
   }
-  index(req: any, res: Response) {
+  index = (req: any, res: Response) => {
     const userId: string = req.user ? req.user.id : ''
     console.log(req.user)
     DialogModel.find()
       .or([{ author: userId }, { partner: userId }])
-      .populate(['author', 'partner', 'lastMessage'])
+      .populate([
+        'author',
+        'partner',
+        { path: 'lastMessage', populate: { path: 'user' } },
+      ])
       .exec()
       .then((dialog) => {
         if (dialog.length > 0) {
           res.json(dialog)
         } else {
-          res.send('empty')
+          res.sendStatus(404)
         }
       })
       .catch((err) => {
         res.sendStatus(404)
       })
   }
-  create(req: any, res: Response) {
+  create = (req: any, res: Response) => {
     const author: string = req.user ? req.user.id : ''
     const { partner, text } = req.body
     const dialog = new DialogModel({ author, partner })
@@ -38,7 +42,12 @@ class DialogController {
           dialog: dialogObj._id,
         })
         message.save().then((messageObj) => {
-          res.json({ dialog: dialogObj, message: messageObj })
+          dialogObj.lastMessage = message._id
+          dialogObj.save().then(() => {
+            console.log('creTED')
+            res.json({ dialog: dialogObj, message: messageObj })
+            this.io.emit('SERVER:DIALOG_CREATED')
+          })
         })
       })
       .catch((err) => {

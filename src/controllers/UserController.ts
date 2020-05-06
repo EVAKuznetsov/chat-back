@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { validationResult } from 'express-validator'
+import { validationResult, Result } from 'express-validator'
 import { Server } from 'socket.io'
 
 import { UserModel } from '../models'
@@ -25,7 +25,6 @@ class UserController {
   }
   getMe(req: any, res: Response) {
     const id: string = req.user.id
-    console.info(id)
     UserModel.findById(id)
       .exec()
       .then((user) => res.json({ status: 'success', user }))
@@ -36,7 +35,7 @@ class UserController {
       )
   }
   async create(req: Request, res: Response) {
-    const { email, fullname, password } = req.body
+    const { email, fullName, password } = req.body
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(422).json({ status: 'error', errors: errors.array() })
@@ -46,12 +45,12 @@ class UserController {
         const candidate = await UserModel.findOne({ email })
         if (candidate) {
           res
-            .status(409)
+            // .status(409)
             .json({ status: 'error', message: 'Такой адрес уже существует' })
         } else {
           const user = new UserModel({
             email,
-            fullname,
+            fullName,
             password,
           })
           try {
@@ -80,6 +79,7 @@ class UserController {
   async login(req: Request, res: Response) {
     const { password, email } = req.body
     const errors = validationResult(req)
+    console.log(req.body)
     if (!errors.isEmpty()) {
       return res.status(422).json({ status: 'error', errors: errors.array() })
     }
@@ -87,6 +87,11 @@ class UserController {
     try {
       const candidat = await UserModel.findOne({ email })
       if (candidat) {
+        if(candidat.confirmed.toString()==='false'){
+          return res.json({
+          status: 'error',
+          message: 'Пользователь не подтверждён',
+        })}
         const passwordResult = HashPassword.compare(password, candidat.password)
         if (passwordResult) {
           // пароли совпали
@@ -95,11 +100,11 @@ class UserController {
         } else {
           // пароли не совпали
           res
-            // .status(401)
             .json({
               status: 'error',
-              message: 'Пароли не совпадают, попробуйте снова',
+              message: 'Неверный пароль',
             })
+            .status(401)
         }
       } else {
         // пользователь не найден
@@ -113,6 +118,24 @@ class UserController {
     } catch (error) {
       errorHandler(res, error)
     }
+  }
+  async verify(req: Request, res: Response) {
+    const hash:string = <string>req.query.hash
+    if (!hash) {
+      return res.status(404).json()
+    }
+    UserModel.findOneAndUpdate({confirm_hash:hash},{confirmed:true}).exec()
+    .then((result)=>{
+      if(result){
+        res.json({status:'success',message:'пользователь подтверждён'})
+      }else{
+        res.json({status:'error',message:'пользователь не подтверждён'})
+      }
+    })
+    .catch(error=>{
+      errorHandler(res, error)
+    })
+    
   }
 }
 

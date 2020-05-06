@@ -6,8 +6,8 @@ const messageRoutes = (io: Server) => {
   const router = Router()
   const MessageController = new controller(io)
 
+  router.get('/', MessageController.index)
   router.post('/create', MessageController.create)
-  router.get('/:dialog_id', MessageController.index)
   router.delete('/:id', MessageController.delete)
 
   return router
