@@ -1,4 +1,4 @@
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { Server } from 'socket.io'
 import errorHandler from '../libs/errorHandler'
 
@@ -10,22 +10,22 @@ class MessageController {
     this.io = io
   }
   index = (req: any, res: Response) => {
-    const dialog_id:string = <string>req.query.dialog_id
-    MessageModel.find({ dialog: dialog_id })
-      .populate(['dialog', 'user'])
-      .exec()
-      .then((messages) => {
-        res.json(messages)
-      })
-      .catch(() => {
-        res.sendStatus(404)
-      })
+      const dialog_id:string = <string>req.query.dialog_id
+      MessageModel.find({dialog:dialog_id})
+        .populate(['dialog', 'user'])
+        .exec()
+        .then((messages) => {
+          res.json(messages)
+        })
+        .catch(() => {
+          res.sendStatus(404)
+        })
   }
 
   create = (req: any, res: Response) => {
     const { text, dialog_id: dialog } = req.body
-    console.log(req.body)
-    const message = new MessageModel({ text, dialog, user: req.user.id })
+    const user = req.user.id ? req.user.id : ''
+    const message = new MessageModel({ text, dialog, user })
     console.log(message)
     message
       .save()
@@ -51,15 +51,34 @@ class MessageController {
       })
   }
 
-  delete = (req: any, res: Response) => {
-    MessageModel.findByIdAndRemove(req.params.id)
-      .exec()
-      .then(() => {
+  delete = async (req: any, res: Response) => {
+    const messageId = req.params.id
+    const userId = req.user.id
+    try {
+      const message = await MessageModel.findOneAndRemove({
+        _id: messageId,
+        user: userId,
+      })
+      if (!message)
+        return res
+          .status(404)
+          .json({ status: 'error', message: 'сообщения нет в базе' })
+
+      const lastMessageOnThisDialog: any = await MessageModel.findOne({
+        dialog: message.dialog,
+      })
+        .sort({ createdAt: -1 })
+        .exec()
+      const thisDialog = await DialogModel.findByIdAndUpdate(message.dialog, {
+        lastMessage: lastMessageOnThisDialog._id,
+      }).exec()
+      if (thisDialog) {
+        this.io.emit('SERVER:MESSAGE_REMOVED',message)
         res.json({ status: 'success', message: 'message removed' })
-      })
-      .catch((err) => {
-        res.json({ status: 'error', err })
-      })
+      }
+    } catch (err) {
+      errorHandler(res, err)
+    }
   }
 }
 
