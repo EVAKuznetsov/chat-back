@@ -34,6 +34,16 @@ class UserController {
           .json({ status: 'error', message: 'Пользователь не найден' })
       )
   }
+  findUser(req: Request, res: Response) {
+    const query: string = <string>req.query.query
+    UserModel.find()
+      .or([{ email: new RegExp(query, 'i') }, { fullName: new RegExp(query, 'i') }])
+      .exec()
+      .then(users => {
+        res.json({ status: 'success', users })
+      })
+      .catch(error => res.status(404).json({ status: 'error', message: error }))
+  }
   async create(req: Request, res: Response) {
     const { email, fullName, password } = req.body
     const errors = validationResult(req)
@@ -87,11 +97,12 @@ class UserController {
     try {
       const candidat = await UserModel.findOne({ email })
       if (candidat) {
-        if(candidat.confirmed.toString()==='false'){
+        if (candidat.confirmed.toString() === 'false') {
           return res.json({
-          status: 'error',
-          message: 'Пользователь не подтверждён',
-        })}
+            status: 'error',
+            message: 'Пользователь не подтверждён',
+          })
+        }
         const passwordResult = HashPassword.compare(password, candidat.password)
         if (passwordResult) {
           // пароли совпали
@@ -120,22 +131,22 @@ class UserController {
     }
   }
   async verify(req: Request, res: Response) {
-    const hash:string = <string>req.query.hash
+    const hash: string = <string>req.query.hash
     if (!hash) {
       return res.status(404).json()
     }
-    UserModel.findOneAndUpdate({confirm_hash:hash},{confirmed:true}).exec()
-    .then((result)=>{
-      if(result){
-        res.json({status:'success',message:'пользователь подтверждён'})
-      }else{
-        res.json({status:'error',message:'пользователь не подтверждён'})
-      }
-    })
-    .catch(error=>{
-      errorHandler(res, error)
-    })
-    
+    UserModel.findOneAndUpdate({ confirm_hash: hash }, { confirmed: true }).exec()
+      .then((result) => {
+        if (result) {
+          res.json({ status: 'success', message: 'пользователь подтверждён' })
+        } else {
+          res.json({ status: 'error', message: 'пользователь не подтверждён' })
+        }
+      })
+      .catch(error => {
+        errorHandler(res, error)
+      })
+
   }
 }
 

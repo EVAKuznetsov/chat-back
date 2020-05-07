@@ -29,9 +29,24 @@ class DialogController {
         res.sendStatus(404)
       })
   }
-  create = (req: any, res: Response) => {
+  create = async (req: any, res: Response) => {
     const author: string = req.user ? req.user.id : ''
     const { partner, text } = req.body
+    const isDialog = await DialogModel.findOne().or([
+      { author: author, partner: partner },
+      { author: partner, partner: author },
+    ])
+    if (author === partner)
+      return res.status(403).json({
+        status: 'error',
+        message:
+          'Нельзя создавать диалоги с самим собой. Найди друзей наконец!',
+      })
+    if (isDialog)
+      return res
+        .status(403)
+        .json({ status: 'error', message: 'Такой диалог уже создан.' })
+
     const dialog = new DialogModel({ author, partner })
     dialog
       .save()
@@ -44,7 +59,6 @@ class DialogController {
         message.save().then((messageObj) => {
           dialogObj.lastMessage = message._id
           dialogObj.save().then(() => {
-            console.log('creTED')
             res.json({ dialog: dialogObj, message: messageObj })
             this.io.emit('SERVER:DIALOG_CREATED')
           })

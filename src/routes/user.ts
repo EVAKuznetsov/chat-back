@@ -8,6 +8,7 @@ const userRoutes = (io: Server) => {
   const UserController = new controller(io)
 
   router.get('/me', UserController.getMe)
+  router.get('/find', UserController.findUser)
   router.get('/verify', UserController.verify)
   router.get('/:id', UserController.get)
   router.post('/signup', registrationValidate, UserController.create)
