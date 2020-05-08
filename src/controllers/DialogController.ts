@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { Server } from 'socket.io'
 import { DialogModel, MessageModel } from '../models'
+import errorHandler from '../libs/errorHandler'
 
 class DialogController {
   io: Server
@@ -9,7 +10,6 @@ class DialogController {
   }
   index = (req: any, res: Response) => {
     const userId: string = req.user ? req.user.id : ''
-    console.log(req.user)
     DialogModel.find()
       .or([{ author: userId }, { partner: userId }])
       .populate([
@@ -19,14 +19,10 @@ class DialogController {
       ])
       .exec()
       .then((dialog) => {
-        if (dialog.length > 0) {
-          res.json(dialog)
-        } else {
-          res.sendStatus(404)
-        }
+        res.json(dialog)
       })
       .catch((err) => {
-        res.sendStatus(404)
+        errorHandler(res, err)
       })
   }
   create = async (req: any, res: Response) => {

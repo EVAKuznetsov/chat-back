@@ -27,12 +27,15 @@ class UserController {
     const id: string = req.user.id
     UserModel.findById(id)
       .exec()
-      .then((user) => res.json({ status: 'success', user }))
+      .then((user) => {
+        if(!user){
+          res
+        .status(404)
+        .json({ status: 'error', message: 'Пользователь не найден' })
+        }else{
+        res.json({ status: 'success', user })}})
       .catch((err) =>
-        res
-          .status(404)
-          .json({ status: 'error', message: 'Пользователь не найден' })
-      )
+        errorHandler(res,err))
   }
   findUser(req: Request, res: Response) {
     const query: string = <string>req.query.query
@@ -89,7 +92,6 @@ class UserController {
   async login(req: Request, res: Response) {
     const { password, email } = req.body
     const errors = validationResult(req)
-    console.log(req.body)
     if (!errors.isEmpty()) {
       return res.status(422).json({ status: 'error', errors: errors.array() })
     }

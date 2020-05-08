@@ -11,6 +11,7 @@ class MessageController {
   }
   index = (req: any, res: Response) => {
       const dialog_id:string = <string>req.query.dialog_id
+      const userId = req.user.id
       MessageModel.find({dialog:dialog_id})
         .populate(['dialog', 'user'])
         .exec()
@@ -18,7 +19,7 @@ class MessageController {
           res.json(messages)
         })
         .catch(() => {
-          res.sendStatus(404)
+          res.status(404).json({status:'error', message:'Сообщений не найдено'})
         })
   }
 
@@ -43,6 +44,7 @@ class MessageController {
             .then((data: any) => console.log(data))
             .catch((err) => errorHandler(res, err))
           this.io.emit('SERVER:MESSAGE_CREATED', message)
+          this.io.emit('SERVER:LAST_MESSAGE_CREATED', message)
           res.json({ status: 'success', message })
         })
       })
@@ -70,7 +72,7 @@ class MessageController {
         .sort({ createdAt: -1 })
         .exec()
       const thisDialog = await DialogModel.findByIdAndUpdate(message.dialog, {
-        lastMessage: lastMessageOnThisDialog._id,
+        lastMessage: lastMessageOnThisDialog?lastMessageOnThisDialog._id:null,
       }).exec()
       if (thisDialog) {
         this.io.emit('SERVER:MESSAGE_REMOVED',message)
