@@ -2,7 +2,7 @@ import { model, Schema, Document } from 'mongoose'
 
 export interface IMessage extends Document {
   text: string;
-  dialog: string;
+  dialog: Schema.Types.ObjectId;
   readed: boolean;
   attachments: Schema.Types.ObjectId;
   user: Schema.Types.ObjectId;

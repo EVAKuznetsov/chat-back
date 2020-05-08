@@ -10,17 +10,19 @@ class MessageController {
     this.io = io
   }
   index = (req: any, res: Response) => {
-      const dialog_id:string = <string>req.query.dialog_id
-      const userId = req.user.id
-      MessageModel.find({dialog:dialog_id})
-        .populate(['dialog', 'user'])
-        .exec()
-        .then((messages) => {
-          res.json(messages)
-        })
-        .catch(() => {
-          res.status(404).json({status:'error', message:'Сообщений не найдено'})
-        })
+    const dialog_id = req.query.dialog_id || ''
+    const userId = req.user.id
+    MessageModel.find({ dialog: dialog_id })
+      .populate(['dialog', 'user'])
+      .exec()
+      .then((messages) => {
+        res.json(messages)
+      })
+      .catch(() => {
+        res
+          .status(404)
+          .json({ status: 'error', message: 'Сообщений не найдено' })
+      })
   }
 
   create = (req: any, res: Response) => {
@@ -44,7 +46,7 @@ class MessageController {
             .then((data: any) => console.log(data))
             .catch((err) => errorHandler(res, err))
           this.io.emit('SERVER:MESSAGE_CREATED', message)
-          this.io.emit('SERVER:LAST_MESSAGE_CREATED', message)
+          this.io.emit('SERVER:LAST_MESSAGE_CHANGED', message)
           res.json({ status: 'success', message })
         })
       })
@@ -57,25 +59,33 @@ class MessageController {
     const messageId = req.params.id
     const userId = req.user.id
     try {
-      const message = await MessageModel.findOneAndRemove({
+      const message: any = await MessageModel.findOneAndRemove({
         _id: messageId,
         user: userId,
       })
+      console.log(message)
       if (!message)
         return res
           .status(404)
           .json({ status: 'error', message: 'сообщения нет в базе' })
 
       const lastMessageOnThisDialog: any = await MessageModel.findOne({
-        dialog: message.dialog,
+        dialog: message.dialog._id,
       })
         .sort({ createdAt: -1 })
+        .populate(['dialog', 'user'])
         .exec()
-      const thisDialog = await DialogModel.findByIdAndUpdate(message.dialog, {
-        lastMessage: lastMessageOnThisDialog?lastMessageOnThisDialog._id:null,
-      }).exec()
+      const thisDialog = await DialogModel.findByIdAndUpdate(
+        message.dialog._id,
+        {
+          lastMessage: lastMessageOnThisDialog
+            ? lastMessageOnThisDialog._id
+            : null,
+        }
+      ).exec()
       if (thisDialog) {
-        this.io.emit('SERVER:MESSAGE_REMOVED',message)
+        this.io.emit('SERVER:MESSAGE_REMOVED', message)
+        this.io.emit('SERVER:LAST_MESSAGE_CHANGED', lastMessageOnThisDialog)
         res.json({ status: 'success', message: 'message removed' })
       }
     } catch (err) {
