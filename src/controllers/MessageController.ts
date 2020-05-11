@@ -9,27 +9,30 @@ class MessageController {
   constructor(io: Server) {
     this.io = io
   }
-  index = (req: any, res: Response) => {
+  index = async (req: any, res: Response) => {
     const dialog_id = req.query.dialog_id || ''
     const userId = req.user.id
-    MessageModel.find({ dialog: dialog_id })
-      .populate(['dialog', 'user'])
-      .exec()
-      .then((messages) => {
-        res.json(messages)
-      })
-      .catch(() => {
-        res
-          .status(404)
-          .json({ status: 'error', message: 'Сообщений не найдено' })
-      })
+    try {
+      //обновим статус сообщений собеседника на прочитанные
+      await MessageModel.update(
+        { dialog: dialog_id, user: { $ne: userId } },
+        { $set: { readed: true } },
+        { multi: true }
+      )
+      const messages = await MessageModel.find({ dialog: dialog_id })
+        .populate(['dialog', 'user'])
+        .exec()
+
+      res.json(messages)
+    } catch (error) {
+      errorHandler(res, error)
+    }
   }
 
   create = (req: any, res: Response) => {
     const { text, dialog_id: dialog } = req.body
     const user = req.user.id ? req.user.id : ''
     const message = new MessageModel({ text, dialog, user })
-    console.log(message)
     message
       .save()
       .then((obj: any) => {
